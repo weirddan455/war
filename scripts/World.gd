@@ -1,15 +1,42 @@
 extends Node2D
 
-var player_units = {}
+enum {FIRE, WAIT}
+enum {NOP, SELECT_UNIT, SELECT_ENEMY, DRAW_PATH, CANCEL, MOVE_UNIT}
+
+const DIRECTIONS := [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]
+
+var player_units := {}
+var enemy_units := {}
 var selected_unit = null
 var movable_cells = null
-var path = []
+var path := []
+var enemy_neighbors = null
 
 onready var Pathfinding = preload("res://gdnative/pathfinding.gdns").new()
 
 func _ready():
 	for unit in $PlayerUnits.get_children():
 		player_units[unit.cell] = unit
+	for unit in $AIUnits.get_children():
+		enemy_units[unit.cell] = unit
+
+func combat(attacker, defender) -> void:
+	defender.take_damage(attacker.ATTACK)
+	attacker.take_damage(defender.ATTACK / 2)
+
+func is_enemy_neighbor() -> bool:
+	for direction in DIRECTIONS:
+		if enemy_units.has(selected_unit.cell + direction):
+			return true
+	return false
+
+func get_enemy_neighbors() -> Dictionary:
+	var enemy_neighbors := {}
+	for direction in DIRECTIONS:
+		var neighbor :Vector2 = selected_unit.cell + direction
+		if enemy_units.has(neighbor):
+			enemy_neighbors[neighbor] = enemy_units[neighbor]
+	return enemy_neighbors
 
 func move_selected_unit(cell_position: Vector2) -> void:
 	if path.back() != cell_position:
@@ -22,7 +49,6 @@ func move_selected_unit(cell_position: Vector2) -> void:
 	path.clear()
 	$PathOverlay.clear()
 	$PathArrow.clear()
-	selected_unit = null
 
 func select_unit(cell_position: Vector2) -> void:
 	selected_unit = player_units[cell_position]
@@ -37,35 +63,57 @@ func cancel_selection() -> void:
 	$PathArrow.clear()
 	selected_unit = null
 
-func _unhandled_input(event):
+func get_input_type(event):
+	if $UI/CommandDialog.visible:
+		return NOP
 	if event is InputEventMouseButton && event.pressed:
 		if event.button_index == BUTTON_LEFT:
-			var cell_position = $TileMap.world_to_map(event.position)
-			if !$TileMap.is_inside_map(cell_position):
-				print("Clicked outside map")
-			elif selected_unit != null:
-				if cell_position in movable_cells:
-					move_selected_unit(cell_position)
-				else:
-					print("Can't move there")
-			elif !player_units.has(cell_position):
-				print("No friendly unit at cell " + str(cell_position.x) + ", " + str(cell_position.y))
-			else:
-				select_unit(cell_position)
-		elif event.button_index == BUTTON_RIGHT && selected_unit != null:
-			cancel_selection()
+			if enemy_neighbors != null:
+				return SELECT_ENEMY
+			if selected_unit != null:
+				return MOVE_UNIT
+			return SELECT_UNIT
+		if event.button_index == BUTTON_RIGHT && selected_unit != null:
+			return CANCEL
+	if event is InputEventMouseMotion && selected_unit != null && enemy_neighbors == null:
+		return DRAW_PATH
+	return NOP
 
-	elif event is InputEventMouseMotion && selected_unit != null:
+func _unhandled_input(event):
+	if event is InputEventMouseButton || event is InputEventMouseMotion:
 		var cell_position = $TileMap.world_to_map(event.position)
-		if cell_position in movable_cells && path.back() != cell_position:
-			path.append(cell_position)
-			if is_path_valid():
-				$PathArrow.draw(cell_position)
-			else:
-				path = Pathfinding.get_new_path(selected_unit.cell.x, selected_unit.cell.y, cell_position.x, cell_position.y, $TileMap)
-				$PathArrow.clear()
-				for cell in path:
-					$PathArrow.draw(cell)
+		match get_input_type(event):
+			SELECT_UNIT:
+				if player_units.has(cell_position):
+					select_unit(cell_position)
+			SELECT_ENEMY:
+				if enemy_neighbors.has(cell_position):
+					for unit in enemy_neighbors.values():
+						unit.stop_animation()
+					combat(selected_unit, enemy_neighbors[cell_position])
+					enemy_neighbors = null
+					selected_unit = null
+			MOVE_UNIT:
+				if movable_cells.has(cell_position):
+					move_selected_unit(cell_position)
+					if is_enemy_neighbor():
+						$UI/CommandDialog/Fire.show()
+					else:
+						$UI/CommandDialog/Fire.hide()
+					$UI/CommandDialog.rect_position = $TileMap.map_to_world_center(cell_position)
+					$UI/CommandDialog.show()
+			CANCEL:
+				cancel_selection()
+			DRAW_PATH:
+				if movable_cells.has(cell_position) && path.back() != cell_position:
+					path.append(cell_position)
+					if is_path_valid():
+						$PathArrow.draw(cell_position)
+					else:
+						path = Pathfinding.get_new_path(selected_unit.cell.x, selected_unit.cell.y, cell_position.x, cell_position.y, $TileMap)
+						$PathArrow.clear()
+						for cell in path:
+							$PathArrow.draw(cell)
 
 func is_path_valid() -> bool:
 	var cost = 0
@@ -88,3 +136,22 @@ func _on_EndTurn_pressed():
 		ai_path.append(unit.cell + Vector2(-2, 0))
 		ai_path.append(unit.cell + Vector2(-2, -1))
 		unit.move(ai_path)
+
+func _on_CommandDialog_pressed(command):
+	if command == FIRE:
+		enemy_neighbors = get_enemy_neighbors()
+		for unit in enemy_neighbors.values():
+			unit.strobe_animation()
+	else:
+		selected_unit = null
+	$UI/CommandDialog.hide()
+
+func unit_removed(unit):
+	for cell in player_units:
+		if player_units[cell] == unit:
+			player_units.erase(cell)
+			return
+	for cell in enemy_units:
+		if enemy_units[cell] == unit:
+			enemy_units.erase(cell)
+			return

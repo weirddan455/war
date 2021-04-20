@@ -1,0 +1,9 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://assets/red_warrior.png" type="Texture" id=1]
+[ext_resource path="res://units/BaseUnit.tscn" type="PackedScene" id=2]
+[ext_resource path="res://scripts/Warrior.gd" type="Script" id=3]
+
+[node name="RedWarrior" instance=ExtResource( 2 )]
+texture = ExtResource( 1 )
+script = ExtResource( 3 )

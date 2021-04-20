@@ -4,9 +4,26 @@ class_name Unit
 const SPEED := 5
 var move_position = null
 var path := []
+var health := 10
 
 onready var tile_map :TileMap = get_node("/root/World/TileMap")
 onready var cell := tile_map.world_to_map(position)
+
+func strobe_animation() -> void:
+	$AnimationPlayer.play("strobe")
+
+func stop_animation() -> void:
+	$AnimationPlayer.stop()
+	self_modulate = Color.white
+
+func take_damage(damage: int) -> bool:
+	health -= damage
+	if (health <= 0):
+		queue_free()
+		return true
+	$ColorRect/Label.text = str(health)
+	$ColorRect.show()
+	return false
 
 func move(new_path: Array) -> void:
 	cell = new_path.back()
@@ -45,3 +62,6 @@ func _process(delta):
 			position.y = move_position.y
 	if position == move_position:
 		move_position = null
+
+func _exit_tree():
+	get_node("/root/World").unit_removed(self)
