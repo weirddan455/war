@@ -1,4 +1,5 @@
 .import/
+.mono/
 *.so
 *.dll
 *.dynlib
