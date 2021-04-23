@@ -181,7 +181,7 @@ public class World : Node2D
                     }
                     break;
                 case InputType.MOVE_UNIT:
-                    if (_movableCells.Contains(cellPosition))
+                    if (_movableCells.Contains(cellPosition) && !_playerUnits.ContainsKey(cellPosition))
                     {
                         MoveSelectedUnit(cellPosition);
                         GetEnemyNeighbors();
@@ -248,6 +248,7 @@ public class World : Node2D
         else
         {
             _selectedUnit = null;
+            _enemyNeighbors.Clear();
         }
         _commandDialog.Hide();
     }
