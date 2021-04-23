@@ -192,6 +192,7 @@ text = "Wait"
 __meta__ = {
 "_edit_lock_": true
 }
+
 [connection signal="pressed" from="UI/EndTurn" to="." method="_EndTurnPressed"]
 [connection signal="pressed" from="UI/CommandDialog/Fire" to="." method="_CommandDialogPressed" binds= [ 0 ]]
 [connection signal="pressed" from="UI/CommandDialog/Wait" to="." method="_CommandDialogPressed" binds= [ 1 ]]
