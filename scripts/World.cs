@@ -10,11 +10,10 @@ public class World : Node2D
     private readonly Dictionary<Vector2, Unit> _playerUnits = new Dictionary<Vector2, Unit>();
     private readonly Dictionary<Vector2, Unit> _enemyUnits = new Dictionary<Vector2, Unit>();
     private readonly Dictionary<Vector2, Unit> _enemyNeighbors = new Dictionary<Vector2, Unit>();
-    private Godot.Collections.Array _path = new Godot.Collections.Array();
-    private Godot.Collections.Dictionary _movableCells = null;
+    private List<Vector2> _path = new List<Vector2>();
+    private HashSet<Vector2> _movableCells = null;
     private Unit _selectedUnit = null;
 
-    private Reference _pathfinding;
     private Map _map;
     private PathOverlay _pathOverlay;
     private PathArrow _pathArrow;
@@ -23,8 +22,6 @@ public class World : Node2D
 
     public override void _Ready()
     {
-        NativeScript nativeScript = (NativeScript)GD.Load("res://gdnative/pathfinding.gdns");
-        _pathfinding = (Reference)nativeScript.New();
         _map = GetNode<Map>("Map");
         _pathOverlay = GetNode<PathOverlay>("PathOverlay");
         _pathArrow = GetNode<PathArrow>("PathArrow");
@@ -64,35 +61,24 @@ public class World : Node2D
         int cost = 0;
         for (int i = 1; i < _path.Count; i++)
         {
-            if (((Vector2)_path[i]).DistanceSquaredTo((Vector2)_path[i - 1]) != 1)
+            if (_path[i].DistanceSquaredTo(_path[i - 1]) != 1)
             {
                 return false;
             }
-            switch (_map.GetCellv((Vector2)_path[i]))
-            {
-                case 0:
-                    cost += 1;
-                    break;
-                case 1:
-                    cost += 2;
-                    break;
-                default:
-                    cost += 9001;
-                    break;
-            }
+            cost += _map.GetCellCost(_path[i]);
         }
         return cost <= _selectedUnit.MoveRange;
     }
 
     private void MoveSelectedUnit(Vector2 cellPosition)
     {
-        if ((Vector2)_path[_path.Count - 1] != cellPosition)
+        if (_path[_path.Count - 1] != cellPosition)
         {
             _path.Add(cellPosition);
         }
         if (!IsPathValid())
         {
-            _path = (Godot.Collections.Array)_pathfinding.Call("get_new_path", _selectedUnit.Cell.x, _selectedUnit.Cell.y, cellPosition.x, cellPosition.y, _map);
+            _path = Pathfinding.GetNewPath(_selectedUnit.Cell, cellPosition, _map, _enemyUnits);
         }
         _playerUnits.Remove(_selectedUnit.Cell);
         _selectedUnit.Move(_path);
@@ -107,7 +93,7 @@ public class World : Node2D
         _selectedUnit = _playerUnits[cellPosition];
         _path.Add(cellPosition);
         _pathArrow.DrawArrow(cellPosition);
-        _movableCells = (Godot.Collections.Dictionary)_pathfinding.Call("get_movable_cells", cellPosition.x, cellPosition.y, _selectedUnit.MoveRange, _map);
+        _movableCells = Pathfinding.GetMovableCells(_selectedUnit, _map, _enemyUnits);
         _pathOverlay.DrawOverlay(_movableCells);
     }
 
@@ -201,7 +187,7 @@ public class World : Node2D
                     CancelSelection();
                     break;
                 case InputType.DRAW_PATH:
-                    if (_movableCells.Contains(cellPosition) && (Vector2)_path[_path.Count - 1] != cellPosition)
+                    if (_movableCells.Contains(cellPosition) && _path[_path.Count - 1] != cellPosition)
                     {
                         _path.Add(cellPosition);
                         if (IsPathValid())
@@ -210,7 +196,7 @@ public class World : Node2D
                         }
                         else
                         {
-                            _path = (Godot.Collections.Array)_pathfinding.Call("get_new_path", _selectedUnit.Cell.x, _selectedUnit.Cell.y, cellPosition.x, cellPosition.y, _map);
+                            _path = Pathfinding.GetNewPath(_selectedUnit.Cell, cellPosition, _map, _enemyUnits);
                             _pathArrow.Clear();
                             foreach (Vector2 cell in _path)
                             {
@@ -227,7 +213,7 @@ public class World : Node2D
     {
         foreach (Unit unit in GetNode("AIUnits").GetChildren())
         {
-            Godot.Collections.Array aiPath = new Godot.Collections.Array();
+            List<Vector2> aiPath = new List<Vector2>();
             aiPath.Add(unit.Cell + new Vector2(-1, 0));
             aiPath.Add(unit.Cell + new Vector2(-2, 0));
             aiPath.Add(unit.Cell + new Vector2(-2, -1));

@@ -16,4 +16,17 @@ public class Map : TileMap
     {
         return MapToWorld(position) + CellSize / 2;
     }
+
+    public int GetCellCost(Vector2 cellPosition)
+    {
+        switch (GetCellv(cellPosition))
+        {
+            case 0:
+                return 1;
+            case 1:
+                return 2;
+            default:
+                return 9001;
+        }
+    }
 }

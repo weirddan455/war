@@ -40,9 +40,9 @@ public abstract class Unit : Sprite
         return false;
     }
 
-    public void Move(Godot.Collections.Array newPath)
+    public void Move(List<Vector2> newPath)
     {
-        Cell = (Vector2)newPath[newPath.Count - 1];
+        Cell = newPath[newPath.Count - 1];
         foreach (Vector2 newPosition in newPath)
         {
             _path.Enqueue(_map.MapToWorldCenter(newPosition));

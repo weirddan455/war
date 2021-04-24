@@ -1,4 +1,5 @@
 using Godot;
+using System.Collections.Generic;
 
 public class PathOverlay : TileMap
 {
@@ -14,11 +15,11 @@ public class PathOverlay : TileMap
         TileSet.TileSetTexture(0, imageTexture);
     }
 
-    public void DrawOverlay(Godot.Collections.Dictionary cells)
+    public void DrawOverlay(HashSet<Vector2> cells)
     {
-        foreach(System.Collections.DictionaryEntry entry in cells)
+        foreach(Vector2 cell in cells)
         {
-            SetCellv((Vector2)entry.Key, 0);
+            SetCellv(cell, 0);
         }
     }
 }
