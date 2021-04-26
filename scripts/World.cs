@@ -8,7 +8,7 @@ public class World : Node2D
     private readonly Vector2[] DIRECTIONS = {Vector2.Left, Vector2.Right, Vector2.Up, Vector2.Down};
 
     private readonly Dictionary<Vector2, Unit> _playerUnits = new Dictionary<Vector2, Unit>();
-    private readonly Dictionary<Vector2, Unit> _enemyUnits = new Dictionary<Vector2, Unit>();
+    private Dictionary<Vector2, Unit> _enemyUnits = new Dictionary<Vector2, Unit>();
     private readonly Dictionary<Vector2, Unit> _enemyNeighbors = new Dictionary<Vector2, Unit>();
     private List<Vector2> _path = new List<Vector2>();
     private HashSet<Vector2> _movableCells = null;
@@ -167,7 +167,7 @@ public class World : Node2D
             switch (GetInputType(@event))
             {
                 case InputType.SELECT_UNIT:
-                    if (_playerUnits.ContainsKey(cellPosition))
+                    if (_playerUnits.ContainsKey(cellPosition) && !_playerUnits[cellPosition].UsedForTurn)
                     {
                         SelectUnit(cellPosition);
                     }
@@ -187,11 +187,13 @@ public class World : Node2D
                 case InputType.MOVE_UNIT:
                     if (_movableCells.Contains(cellPosition) && !_playerUnits.ContainsKey(cellPosition))
                     {
+                        _selectedUnit.UsedForTurn = true;
                         MoveSelectedUnit(cellPosition);
                         ShowCommandDialog(cellPosition);
                     }
                     else if (cellPosition == _selectedUnit.Cell)
                     {
+                        _selectedUnit.UsedForTurn = true;
                         ClearPath();
                         ShowCommandDialog(cellPosition);
                     }
@@ -224,14 +226,21 @@ public class World : Node2D
 
     public void _EndTurnPressed()
     {
-        foreach (Unit unit in GetNode("AIUnits").GetChildren())
+        foreach (Unit unit in _playerUnits.Values)
+        {
+            unit.UsedForTurn = false;
+        }
+        Dictionary<Vector2, Unit> tempEnemyUnits = new Dictionary<Vector2, Unit>();
+        foreach (Unit unit in _enemyUnits.Values)
         {
             List<Vector2> aiPath = new List<Vector2>();
             aiPath.Add(unit.Cell + new Vector2(-1, 0));
             aiPath.Add(unit.Cell + new Vector2(-2, 0));
             aiPath.Add(unit.Cell + new Vector2(-2, -1));
             unit.Move(aiPath);
+            tempEnemyUnits.Add(unit.Cell, unit);
         }
+        _enemyUnits = tempEnemyUnits;
     }
 
     public void _CommandDialogPressed(int iCommand)

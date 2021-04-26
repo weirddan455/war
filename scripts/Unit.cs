@@ -10,11 +10,29 @@ public abstract class Unit : Sprite
     private AnimationPlayer _animationPlayer;
     private ColorRect _colorRect;
     private Label _label;
+    private bool _usedForTurn = false;
 
     public Vector2 Cell { get; private set; }
 
     public abstract int MoveRange { get; }
     public abstract int Attack { get; }
+
+    public bool UsedForTurn
+    {
+        get => _usedForTurn;
+        set
+        {
+            if (value == true)
+            {
+                SelfModulate = Colors.Gray;
+            }
+            else
+            {
+                SelfModulate = Colors.White;
+            }
+            _usedForTurn = value;
+        }
+    }
 
     public void StrobeAnimation()
     {
