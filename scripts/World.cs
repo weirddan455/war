@@ -83,9 +83,7 @@ public class World : Node2D
         _playerUnits.Remove(_selectedUnit.Cell);
         _selectedUnit.Move(_path);
         _playerUnits.Add(_selectedUnit.Cell, _selectedUnit);
-        _path.Clear();
-        _pathOverlay.Clear();
-        _pathArrow.Clear();
+        ClearPath();
     }
 
     private void SelectUnit(Vector2 cellPosition)
@@ -97,11 +95,31 @@ public class World : Node2D
         _pathOverlay.DrawOverlay(_movableCells);
     }
 
-    private void CancelSelection()
+    private void ShowCommandDialog(Vector2 cellPosition)
+    {
+        GetEnemyNeighbors();
+        if (_enemyNeighbors.Count > 0)
+        {
+            _fireButton.Show();
+        }
+        else
+        {
+            _fireButton.Hide();
+        }
+        _commandDialog.RectPosition = _map.MapToWorldCenter(cellPosition);
+        _commandDialog.Show();
+    }
+
+    private void ClearPath()
     {
         _path.Clear();
         _pathOverlay.Clear();
         _pathArrow.Clear();
+    }
+
+    private void CancelSelection()
+    {
+        ClearPath();
         _selectedUnit = null;
     }
 
@@ -170,17 +188,12 @@ public class World : Node2D
                     if (_movableCells.Contains(cellPosition) && !_playerUnits.ContainsKey(cellPosition))
                     {
                         MoveSelectedUnit(cellPosition);
-                        GetEnemyNeighbors();
-                        if (_enemyNeighbors.Count > 0)
-                        {
-                            _fireButton.Show();
-                        }
-                        else
-                        {
-                            _fireButton.Hide();
-                        }
-                        _commandDialog.RectPosition = _map.MapToWorldCenter(cellPosition);
-                        _commandDialog.Show();
+                        ShowCommandDialog(cellPosition);
+                    }
+                    else if (cellPosition == _selectedUnit.Cell)
+                    {
+                        ClearPath();
+                        ShowCommandDialog(cellPosition);
                     }
                     break;
                 case InputType.CANCEL:
